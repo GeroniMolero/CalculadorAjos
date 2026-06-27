@@ -1397,7 +1397,7 @@
           <div class="rp-cover-edition">szung &middot; España</div>
           <p class="rp-cover-hint">&#8592; Selecciona una receta</p>
         </div>`;
-      if (scrollToM) setTimeout(() => showDetail(scrollToM), 100);
+      if (scrollToM) requestAnimationFrame(() => showDetail(scrollToM));
     }
 
     function closePanel() {
