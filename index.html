@@ -520,6 +520,11 @@
     /* ─── Focus ring general ─── */
     button:focus-visible { outline: 2px solid var(--accent-lt); outline-offset: 2px; }
 
+    /* Pantallas muy estrechas (≤360px): escalar proporcionalmente todo */
+    @media (max-width: 360px) {
+      :root { font-size: 14px; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { transition: none !important; animation: none !important; }
     }
@@ -585,6 +590,9 @@
       }
       .contract-fine  { padding: .7rem 1rem .85rem; }
       .contract-back  { padding: .65rem 1rem; }
+
+      /* Contener desbordamiento del flip card */
+      .flip-scene { overflow-x: hidden; }
 
       /* Flip card: reemplazar la rotación 3D por crossfade de opacidad.
          La perspectiva 3D en móvil desplaza el backface horizontalmente
