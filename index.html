@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculadora de Ajos · España</title>
+  <meta name="description" content="Convierte euros a kilos de ajo al precio del mercado español. Con ajos animados para aplastar.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:;">
+
+
+  <style>
+    /* ═══════════════════════════════════════════
+       TOKENS
+    ═══════════════════════════════════════════ */
+    :root {
+      --text:        #F5F0E2;
+      --text-dim:    #C8C2A0;
+      --text-faint:  #B0AA92;
+      --accent:      #8B3FA8;
+      --accent-mid:  #A258C4;
+      --accent-lt:   #C480E0;
+      --accent-glow: rgba(139,63,168,.25);
+      --gold:        #C08A20;
+      --gold-bright: #E0AE30;
+      --gold-glow:   rgba(192,138,32,.22);
+      --border:      rgba(192,138,32,.14);
+      --border-hi:   rgba(192,138,32,.26);
+      /* Card — gris neutro con toque verdoso */
+      --card-bg:   #252A27;
+      --card-srf:  #1C211E;
+      --card-srf2: #212620;
+      /* Fondo — Bodega (oliva oscuro) */
+      --bg:        #0F1309;
+      --surface:   #182011;
+      --srf-hi:    #1F2A16;
+      --srf-hi2:   #263318;
+      --body-grad: radial-gradient(ellipse at 38% 28%, #1C2812 0%, #0F1309 68%);
+    }
+
+    /* ═══════════════════════════════════════════
+       BASE
+    ═══════════════════════════════════════════ */
+    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { background: var(--bg); }
+
+    body {
+      background-color: var(--bg);
+      background-image: var(--body-grad);
+      color: var(--text);
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+      position: relative;
+      padding: 2rem 0.625rem;
+    }
+
+    #stage { position: fixed; inset: 0; z-index: 1; }
+
+    /* ─── Score badge ─── */
+    .score {
+      position: fixed;
+      top: 1.2rem;
+      right: 1.2rem;
+      z-index: 30;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: .6rem 1rem;
+      text-align: center;
+      min-width: 8.5rem;
+      box-shadow: 0 4px 28px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.03) inset;
+    }
+    .score-label { font-size: .59rem; letter-spacing: .18em; text-transform: uppercase; color: var(--text-faint); }
+    .score-num {
+      font-family: 'Courier New', monospace;
+      font-variant-numeric: tabular-nums;
+      font-size: 2rem;
+      color: var(--accent-lt);
+      line-height: 1.1;
+      margin: .1rem 0;
+    }
+    .score-hint { font-size: .57rem; color: var(--text-faint); }
+
+    /* ─── Quip ─── */
+    #quip {
+      position: fixed; z-index: 50;
+      font-size: .82rem; font-style: italic;
+      color: var(--gold-bright);
+      background: rgba(8,11,5,.92);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .32rem .7rem;
+      pointer-events: none;
+      opacity: 0; transform: translateY(0);
+      transition: opacity .12s ease, transform .55s ease;
+      white-space: nowrap;
+      backdrop-filter: blur(8px);
+    }
+    #quip.on { opacity: 1; transform: translateY(-22px); }
+
+    /* ─── Flash ─── */
+    @keyframes flash { 0%{opacity:0} 18%{opacity:1} 100%{opacity:0} }
+    #flash {
+      position: fixed; inset: 0; z-index: 40;
+      background: radial-gradient(ellipse at center, rgba(139,63,168,.32) 0%, transparent 68%);
+      pointer-events: none; opacity: 0;
+    }
+    #flash.pop { animation: flash 1.3s ease-out forwards; }
+
+    /* ─── Main UI ─── */
+    .ui { position: relative; z-index: 20; width: 440px; max-width: calc(100vw - 1.25rem); margin: auto 0; }
+
+    /* ─── Header ─── */
+    .hdr { text-align: center; margin-bottom: 1.35rem; }
+    .hdr-title { display: flex; align-items: center; justify-content: center; gap: .55rem; margin-bottom: .28rem; }
+    .hdr-icon { font-size: 2.3rem; filter: drop-shadow(0 0 14px rgba(139,63,168,.6)); line-height: 1; }
+    .hdr h1 {
+      font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+      font-size: 2.05rem; font-weight: 700; letter-spacing: -.025em;
+      color: var(--gold-bright);
+      text-shadow: 0 0 36px var(--gold-glow), 0 2px 10px rgba(0,0,0,.6);
+      text-wrap: balance; line-height: 1;
+    }
+    .hdr-sub { font-size: .62rem; letter-spacing: .22em; text-transform: uppercase; color: var(--text-faint); }
+
+    /* ─── Card ─── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-hi);
+      border-radius: 20px;
+      padding: 1.75rem;
+      box-shadow:
+        0 0 90px rgba(0,0,0,.7),
+        0 1px 0 rgba(255,255,255,.08) inset,
+        0 0 70px var(--accent-glow),
+        0 24px 64px rgba(0,0,0,.55);
+    }
+
+    /* ─── Price strip ─── */
+    .price-strip {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--card-srf);
+      border: 1px solid var(--border);
+      border-radius: 11px; padding: .72rem 1rem; margin-bottom: 1.5rem; gap: 1rem;
+    }
+    .ps-meta { display: flex; flex-direction: column; gap: .08rem; }
+    .ps-label { font-size: .6rem; letter-spacing: .17em; text-transform: uppercase; color: var(--text-faint); }
+    .ps-dop { font-size: .63rem; color: var(--accent-lt); letter-spacing: .03em; }
+    .ps-control { display: flex; align-items: center; gap: .28rem; flex-shrink: 0; }
+    .ps-sym { font-size: .92rem; color: var(--gold); font-weight: 600; }
+    .ps-input {
+      background: transparent; border: none;
+      border-bottom: 1px solid var(--border-hi);
+      color: var(--gold-bright);
+      font-size: 1.12rem; font-weight: 600;
+      font-family: 'Courier New', monospace;
+      font-variant-numeric: tabular-nums;
+      width: 5ch; text-align: right; outline: none;
+      padding: .04rem 0;
+      transition: border-color .15s;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+    .ps-input:focus { border-bottom-color: var(--gold-bright); }
+    .ps-input::-webkit-outer-spin-button,
+    .ps-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .ps-unit { font-size: .73rem; color: var(--text-faint); }
+
+    /* ─── Fields ─── */
+    .field { position: relative; }
+    .field-label { display: block; font-size: .6rem; letter-spacing: .16em; text-transform: uppercase; color: var(--text-faint); margin-bottom: .32rem; }
+    .input-row {
+      display: flex; align-items: stretch;
+      background: var(--card-srf);
+      border: 1px solid var(--border);
+      border-radius: 11px; overflow: hidden;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .input-row:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .input-sym { display: flex; align-items: center; justify-content: center; padding: 0 .9rem; font-size: .95rem; color: var(--accent-mid); border-right: 1px solid var(--border); flex-shrink: 0; }
+    .input-row input {
+      flex: 1; min-width: 0; background: transparent; border: none;
+      color: var(--text); font-size: 1.32rem;
+      font-family: 'Courier New', monospace;
+      font-variant-numeric: tabular-nums;
+      padding: .78rem .75rem; outline: none;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+    .input-row input::-webkit-outer-spin-button,
+    .input-row input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .input-row input::placeholder { color: var(--text-faint); font-size: 1rem; }
+    .input-tag { display: flex; align-items: center; padding: 0 .85rem; font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); border-left: 1px solid var(--border); flex-shrink: 0; }
+
+    /* ─── Divider ─── */
+    .divider { display: flex; align-items: center; gap: .75rem; margin: .65rem 0; }
+    .div-line { flex: 1; height: 1px; background: var(--border); }
+    .swap-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 2.1rem; height: 2.1rem; border-radius: 50%;
+      background: var(--card-srf2); border: 1px solid var(--border);
+      color: var(--gold); font-size: .92rem; cursor: pointer;
+      transition: background .15s, color .15s, border-color .15s, transform .22s;
+      flex-shrink: 0;
+    }
+    .swap-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); transform: rotate(180deg); }
+
+    /* ─── Results ─── */
+    .results {
+      margin-top: 1.4rem;
+      background: var(--card-srf);
+      border: 1px solid var(--border);
+      border-radius: 13px; overflow: hidden;
+    }
+    .res-main { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border); }
+    .res-main-item { padding: .88rem 1rem; }
+    .res-main-item + .res-main-item { border-left: 1px solid var(--border); }
+    .res-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .res-item { padding: .62rem 1rem; }
+    .res-item + .res-item { border-left: 1px solid var(--border); }
+    .r-lbl { font-size: .57rem; letter-spacing: .13em; text-transform: uppercase; color: var(--text-faint); margin-bottom: .18rem; white-space: nowrap; }
+    .r-val { font-family: 'Courier New', monospace; font-variant-numeric: tabular-nums; font-size: .92rem; color: var(--text-dim); }
+    .r-val.big { font-size: 1.42rem; font-weight: 600; color: var(--gold-bright); }
+    .r-val.purple { color: var(--accent-lt); }
+    .r-val.big.purple { color: var(--accent-lt); }
+
+    .hint { text-align: center; margin-top: 1rem; font-size: .6rem; color: var(--text-faint); letter-spacing: .07em; }
+
+    /* ─── Flip 3D ─── */
+    .flip-scene {
+      perspective: 1400px;
+    }
+    .flip-card {
+      display: grid;
+      transform-style: preserve-3d;
+      transition: transform .7s cubic-bezier(.4,0,.2,1);
+    }
+    .flip-card.flipped { transform: rotateY(180deg); }
+    .flip-front,
+    .flip-back {
+      grid-area: 1 / 1;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .flip-back { transform: rotateY(180deg); }
+
+    .flip-link {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: rgba(192,138,32,.06);
+      border: 1px solid var(--border-hi);
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: .6rem; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--text-dim);
+      padding: .55rem 1.15rem;
+      transition: background .18s, color .18s, border-color .18s, box-shadow .18s;
+      font-family: inherit;
+    }
+    .flip-link:hover {
+      background: rgba(192,138,32,.13);
+      color: var(--gold-bright);
+      border-color: var(--gold);
+      box-shadow: 0 0 20px rgba(192,138,32,.15);
+    }
+    .flip-cta { text-align: center; margin-top: 1rem; }
+
+    /* ─── Contrato arrendamiento ─── */
+    .contract {
+      background: var(--card-bg);
+      border: 1px solid var(--border-hi);
+      border-top: 2px solid var(--gold);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow:
+        0 0 90px rgba(0,0,0,.7),
+        0 1px 0 rgba(255,255,255,.08) inset,
+        0 24px 64px rgba(0,0,0,.55);
+    }
+    .contract-hdr {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 1.2rem 1.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--card-srf);
+      gap: 1rem;
+    }
+    .contract-eyebrow {
+      font-size: .5rem; letter-spacing: .2em; text-transform: uppercase;
+      color: var(--text-faint); margin-bottom: .22rem;
+    }
+    .contract-title {
+      font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+      font-size: 1.08rem; font-weight: 700; color: var(--gold-bright);
+      margin-bottom: .18rem; line-height: 1.2;
+    }
+    .contract-law {
+      font-size: .52rem; color: var(--text-faint); letter-spacing: .01em; line-height: 1.6;
+    }
+    .contract-mod {
+      font-family: 'Courier New', monospace;
+      font-size: .54rem; color: var(--text-faint);
+      letter-spacing: .07em; text-align: right;
+      white-space: nowrap; flex-shrink: 0; padding-top: .15rem;
+    }
+    .contract-field { padding: 1.25rem 1.75rem 1.35rem; }
+    .cr-top {
+      display: grid; grid-template-columns: 1fr 1fr;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .cr-bot {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      border-bottom: 1px solid var(--border);
+    }
+    .cr-item { padding: .82rem 1.75rem; }
+    .cr-item + .cr-item { border-left: 1px solid var(--border); }
+    .contract-fine {
+      padding: 1rem 1.75rem 1.1rem;
+      font-size: .5rem; color: var(--text-faint);
+      line-height: 1.75; letter-spacing: .01em;
+      background: var(--card-srf);
+    }
+    .contract-back {
+      padding: .85rem 1.75rem;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+
+    /* ─── Recipe toast ─── */
+    .recipe-toast {
+      position: fixed; bottom: 4.5rem; right: 1rem;
+      transform: translateX(calc(100% + 2rem));
+      z-index: 60; width: 290px; max-width: calc(100vw - 2rem);
+      background: var(--card-bg); border: 1px solid rgba(192,138,32,.55); border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,.75), 0 0 70px var(--gold-glow), 0 0 0 1px rgba(255,255,255,.04) inset;
+      opacity: 0; pointer-events: none;
+      transition: opacity .35s ease, transform .42s cubic-bezier(.34,1.56,.64,1);
+    }
+    .recipe-toast.on { opacity: 1; transform: translateX(0); pointer-events: auto; }
+    .rt-img { width: 100%; height: 110px; object-fit: cover; display: block; background: var(--card-srf); }
+    .rt-img.hidden { display: none; }
+    .rt-content { padding: .82rem 1.05rem .92rem; }
+    .rt-eyebrow { font-size: .47rem; letter-spacing: .22em; text-transform: uppercase; color: var(--gold); margin-bottom: .2rem; }
+    .rt-name { font-family: 'Palatino Linotype', Palatino, Georgia, serif; font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: .05rem; line-height: 1.2; }
+    .rt-real { font-size: .57rem; color: var(--text-faint); margin-bottom: .68rem; }
+    .rt-actions { display: flex; gap: .6rem; align-items: center; }
+    .rt-btn { background: var(--gold); color: #0F1309; border: none; border-radius: 8px; padding: .38rem .85rem; font-size: .62rem; letter-spacing: .08em; font-weight: 700; cursor: pointer; text-transform: uppercase; font-family: inherit; transition: background .15s; }
+    .rt-btn:hover { background: var(--gold-bright); }
+    .rt-dismiss { background: none; border: none; font-size: .6rem; color: var(--text-faint); cursor: pointer; padding: 0; font-family: inherit; letter-spacing: .05em; text-transform: uppercase; transition: color .15s; }
+    .rt-dismiss:hover { color: var(--text); }
+
+    /* ─── Recipe badge ─── */
+    .recipe-badge {
+      position: fixed; bottom: 1.2rem; left: 1.2rem; z-index: 30;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+      padding: .6rem 1rem; text-align: center; min-width: 8.5rem;
+      box-shadow: 0 4px 28px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.03) inset;
+      cursor: pointer; transition: border-color .15s, box-shadow .15s;
+    }
+    .recipe-badge:hover { border-color: var(--gold); box-shadow: 0 4px 28px rgba(0,0,0,.45), 0 0 20px var(--gold-glow); }
+    .rb-label { font-size: .59rem; letter-spacing: .18em; text-transform: uppercase; color: var(--text-faint); }
+    .rb-num { font-family: 'Courier New', monospace; font-variant-numeric: tabular-nums; font-size: 2rem; color: var(--gold-bright); line-height: 1.1; margin: .1rem 0; }
+    .rb-num span { font-size: .85rem; color: var(--text-faint); }
+    .rb-hint { font-size: .57rem; color: var(--text-faint); }
+
+    /* ─── Recipe panel ─── */
+    .rp-overlay {
+      position: fixed; inset: 0; z-index: 80;
+      background: rgba(0,0,0,.65); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .3s ease;
+      padding: 1.5rem 0.625rem;
+    }
+    .rp-overlay.open { opacity: 1; pointer-events: auto; }
+    .rp-inner {
+      width: min(720px, calc(100vw - 1.25rem));
+      max-height: calc(100vh - 3rem);
+      background: var(--card-bg);
+      border: 1px solid var(--border-hi); border-radius: 20px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.8);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .rp-hdr {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 1.4rem 1.75rem 1.1rem; border-bottom: 1px solid var(--border);
+      background: var(--card-srf); border-radius: 20px 20px 0 0;
+      flex-shrink: 0; gap: 1rem;
+    }
+    .rp-eyebrow { font-size: .5rem; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin-bottom: .18rem; }
+    .rp-title { font-family: 'Palatino Linotype', Palatino, Georgia, serif; font-size: 1.1rem; font-weight: 700; color: var(--gold-bright); margin-bottom: .1rem; line-height: 1.2; }
+    .rp-sub { font-size: .55rem; color: var(--text-faint); letter-spacing: .04em; }
+    .rp-close { background: none; border: 1px solid var(--border); color: var(--text-faint); cursor: pointer; width: 2rem; height: 2rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .85rem; flex-shrink: 0; transition: border-color .15s, color .15s; }
+    .rp-close:hover { border-color: var(--text-faint); color: var(--text); }
+    .rp-panels { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+    .rp-list {
+      width: 220px; flex-shrink: 0;
+      overflow-y: auto; padding: .4rem 0;
+      border-right: 1px solid var(--border);
+    }
+    .rp-list::-webkit-scrollbar { width: 4px; }
+    .rp-list::-webkit-scrollbar-track { background: transparent; }
+    .rp-list::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+    .rp-detail { flex: 1; overflow-y: auto; min-width: 0; }
+    .rp-detail::-webkit-scrollbar { width: 4px; }
+    .rp-detail::-webkit-scrollbar-track { background: transparent; }
+    .rp-detail::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+    .rp-detail-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; min-height: 220px; gap: .55rem;
+      color: var(--text-faint); font-size: .6rem; letter-spacing: .1em; text-transform: uppercase;
+    }
+    .rp-detail-hero { position: relative; overflow: hidden; }
+    .rp-detail-img { width: 100%; height: 230px; object-fit: cover; display: block; background: var(--card-srf); transition: transform .5s ease; }
+    .rp-detail-hero:hover .rp-detail-img { transform: scale(1.04); }
+    .rp-detail-overlay {
+      position: absolute; inset: 0; top: auto;
+      padding: 2.5rem 1.5rem 1.1rem;
+      background: linear-gradient(to top, rgba(11,16,7,.97) 0%, rgba(11,16,7,.68) 48%, transparent 100%);
+      pointer-events: none;
+    }
+    .rp-detail-eyebrow { font-size: .47rem; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin-bottom: .13rem; }
+    .rp-detail-name {
+      font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+      font-size: 1.2rem; font-weight: 700; color: #fff; line-height: 1.2; margin-bottom: .2rem;
+      text-shadow: 0 1px 10px rgba(0,0,0,.85);
+    }
+    .rp-detail-meta { font-size: .56rem; color: rgba(255,255,255,.55); letter-spacing: .04em; }
+    .rp-detail-body { padding: 1.1rem 1.5rem 1.75rem; }
+    .rp-item { border-bottom: 1px solid var(--border); }
+    .rp-item:last-child { border-bottom: none; }
+    .rp-item-hdr { padding: .8rem 1.1rem; cursor: pointer; transition: background .15s; }
+    .rp-item-hdr:hover { background: rgba(255,255,255,.03); }
+    .rp-item.selected > .rp-item-hdr { background: rgba(192,138,32,.08); border-left: 2px solid var(--gold); padding-left: calc(1.1rem - 2px); }
+    .rp-item--locked > .rp-item-hdr { cursor: default; opacity: .45; }
+    .rp-item--locked > .rp-item-hdr:hover { background: none; }
+    .rp-item-sub { font-family: 'Palatino Linotype', Palatino, Georgia, serif; font-size: .82rem; font-weight: 700; color: var(--gold-bright); margin-bottom: .04rem; line-height: 1.2; }
+    .rp-item--locked .rp-item-sub { color: var(--text-faint); font-family: inherit; font-size: .65rem; font-weight: 400; letter-spacing: .07em; text-transform: uppercase; }
+    .rp-item-nom { font-size: .55rem; color: var(--text-faint); letter-spacing: .04em; }
+    .rp-lock { font-size: .85rem; flex-shrink: 0; }
+    .rp-slabel { font-size: .52rem; letter-spacing: .16em; text-transform: uppercase; color: var(--text-faint); margin-bottom: .5rem; margin-top: .9rem; }
+    .rp-slabel:first-child { margin-top: .15rem; }
+    .rp-ingr { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .rp-ingr-tag { background: var(--card-srf); border: 1px solid var(--border); border-radius: 6px; padding: .2rem .6rem; font-size: .6rem; color: var(--text-dim); }
+    .rp-steps { counter-reset: paso; }
+    .rp-step { counter-increment: paso; display: grid; grid-template-columns: 1.5rem 1fr; gap: .5rem; margin-bottom: .5rem; font-size: .67rem; color: var(--text-dim); line-height: 1.65; }
+    .rp-step::before { content: counter(paso) '.'; font-family: 'Courier New', monospace; font-size: .6rem; color: var(--gold); font-weight: 700; padding-top: .1rem; text-align: right; }
+    .rp-back-btn {
+      display: none; align-items: center; gap: .4rem;
+      background: none; border: none; border-bottom: 1px solid var(--border);
+      cursor: pointer; color: var(--text-faint);
+      font-size: .6rem; letter-spacing: .08em; text-transform: uppercase;
+      padding: .7rem 1.25rem; width: 100%; font-family: inherit; transition: color .15s;
+    }
+    .rp-back-btn:hover { color: var(--text); }
+    @media (max-width: 559px) {
+      .rp-list { width: 100%; border-right: none; }
+      .rp-panels { position: relative; }
+      .rp-detail {
+        position: absolute; inset: 0;
+        background: var(--card-bg); z-index: 2;
+        transform: translateX(100%); transition: transform .3s ease;
+      }
+      .rp-detail.visible { transform: translateX(0); }
+      .rp-back-btn { display: flex; }
+    }
+
+    /* ─── Portada recetario (estado vacío) ─── */
+    .rp-cover {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; min-height: 320px;
+      background: linear-gradient(155deg, #2C3A1E 0%, #192313 100%);
+      padding: 2rem 1.75rem; text-align: center; position: relative; overflow: hidden;
+    }
+    .rp-cover::before {
+      content: ''; position: absolute; inset: 12px;
+      border: 1px solid rgba(192,138,32,.28); border-radius: 3px; pointer-events: none;
+    }
+    .rp-cover-kicker {
+      font-size: .46rem; letter-spacing: .26em; text-transform: uppercase;
+      color: rgba(192,138,32,.48); margin-bottom: 1.4rem; position: relative; z-index: 1;
+    }
+    .rp-cover-garlic { font-size: 3.5rem; filter: drop-shadow(0 0 22px rgba(192,138,32,.55)); display: block; margin-bottom: .9rem; position: relative; z-index: 1; }
+    .rp-cover-rule { width: 52px; height: 1px; background: rgba(192,138,32,.3); margin: .75rem auto; }
+    .rp-cover-title {
+      font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+      font-size: 1.42rem; font-weight: 700; color: #D4A832; line-height: 1.25;
+      text-shadow: 0 0 40px rgba(192,138,32,.35); position: relative; z-index: 1;
+    }
+    .rp-cover-edition { font-size: .5rem; letter-spacing: .2em; text-transform: uppercase; color: rgba(192,138,32,.4); margin-top: .75rem; position: relative; z-index: 1; }
+    .rp-cover-hint { position: absolute; bottom: 20px; font-size: .5rem; letter-spacing: .1em; text-transform: uppercase; color: rgba(245,240,226,.16); }
+    /* ─── Receta secreta ─── */
+    .rp-item--secret { border-bottom: 1px solid rgba(192,138,32,.22); }
+    .rp-item--secret > .rp-item-hdr { background: rgba(192,138,32,.05); }
+    .rp-item--secret > .rp-item-hdr:hover { background: rgba(192,138,32,.1); }
+    .rp-item--secret .rp-item-sub { color: var(--gold-bright); }
+    .rp-item--secret .rp-item-sub::before { content: '✦ '; color: var(--gold); font-size: .65rem; }
+    .rp-item--secret.selected > .rp-item-hdr { background: rgba(192,138,32,.14); }
+
+    /* ─── Footer ─── */
+    .footer {
+      position: fixed;
+      bottom: .9rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      font-size: .5rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      opacity: .45;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    /* ─── Focus ring general ─── */
+    button:focus-visible { outline: 2px solid var(--accent-lt); outline-offset: 2px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="stage"></canvas>
+
+  <div class="score">
+    <div class="score-label">Ajos aplastados</div>
+    <div class="score-num" id="score">0</div>
+    <div class="score-hint">🧄 haz click en los ajos</div>
+  </div>
+
+  <div id="quip"></div>
+  <div id="flash"></div>
+  <p class="footer">un proyecto de szung &middot; 2026</p>
+
+  <!-- Recipe toast -->
+  <div class="recipe-toast" id="recipeToast" role="alert" aria-live="polite">
+    <img class="rt-img hidden" id="rtImg" src="" alt="">
+    <div class="rt-content">
+      <div class="rt-eyebrow" id="rtEyebrow">Receta desbloqueada</div>
+      <div class="rt-name" id="rtName"></div>
+      <div class="rt-real" id="rtReal"></div>
+      <div class="rt-actions">
+        <button class="rt-btn" id="rtVerBtn">Ver receta →</button>
+        <button class="rt-dismiss" id="rtDismissBtn">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recipe badge -->
+  <button class="recipe-badge" id="recipeBadge" aria-label="Ver recetario desbloqueado">
+    <div class="rb-label">Recetario</div>
+    <div class="rb-num" id="rbNum">0<span>/8</span></div>
+    <div class="rb-hint">ver colección</div>
+  </button>
+
+  <!-- Recipe panel -->
+  <div class="rp-overlay" id="recipePanel" role="dialog" aria-modal="true" aria-label="Recetario del Arrendatario">
+    <div class="rp-inner">
+      <div class="rp-hdr">
+        <div>
+          <div class="rp-eyebrow">Colección</div>
+          <h2 class="rp-title">Recetario del Arrendatario</h2>
+          <p class="rp-sub" id="rpSub">0 de 8 recetas desbloqueadas</p>
+        </div>
+        <button class="rp-close" id="rpClose" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="rp-panels">
+        <div class="rp-list" id="rpList"></div>
+        <div class="rp-detail" id="rpDetail">
+          <div class="rp-detail-empty">
+            <span style="font-size:1.5rem;opacity:.3">🧄</span>
+            <p>Selecciona una receta</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ui" id="mainui">
+    <div class="hdr">
+      <div class="hdr-title">
+        <span class="hdr-icon">🧄</span>
+        <h1>Calculadora de Ajos</h1>
+      </div>
+      <p class="hdr-sub">Conversión · Euros · Kilogramos · España</p>
+    </div>
+
+    <div class="flip-scene">
+      <div class="flip-card" id="flipCard">
+
+        <!-- CARA DELANTERA: calculadora -->
+        <div class="flip-front">
+          <div class="card">
+            <div class="price-strip">
+              <div class="ps-meta">
+                <span class="ps-label">Precio de referencia</span>
+                <span class="ps-dop">Ejemplo editable · actualiza con el precio real</span>
+              </div>
+              <div class="ps-control">
+                <span class="ps-sym">€</span>
+                <input class="ps-input" type="number" id="priceKg" value="3.80" min="0.01" max="9999" step="0.10">
+                <span class="ps-unit">/ kg</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="eurosIn">Euros que tienes</label>
+              <div class="input-row">
+                <span class="input-sym">€</span>
+                <input type="number" id="eurosIn" placeholder="0,00" min="0" step="0.01">
+                <span class="input-tag">EUR</span>
+              </div>
+            </div>
+
+            <div class="divider">
+              <div class="div-line"></div>
+              <button class="swap-btn" id="swapBtn" title="Intercambiar" aria-label="Intercambiar dirección">⇅</button>
+              <div class="div-line"></div>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="kilosIn">Kilos que quieres</label>
+              <div class="input-row">
+                <span class="input-sym">⚖</span>
+                <input type="number" id="kilosIn" placeholder="0,000" min="0" step="0.001">
+                <span class="input-tag">KG</span>
+              </div>
+            </div>
+
+            <div class="results">
+              <div class="res-main">
+                <div class="res-main-item">
+                  <div class="r-lbl">Kilos de ajo</div>
+                  <div class="r-val big" id="rKg">—</div>
+                </div>
+                <div class="res-main-item">
+                  <div class="r-lbl">Coste total</div>
+                  <div class="r-val big purple" id="rEur">—</div>
+                </div>
+              </div>
+              <div class="res-grid">
+                <div class="res-item"><div class="r-lbl">Gramos</div><div class="r-val" id="rGr">—</div></div>
+                <div class="res-item"><div class="r-lbl">Cabezas</div><div class="r-val" id="rCab">—</div></div>
+                <div class="res-item"><div class="r-lbl">Dientes</div><div class="r-val" id="rDi">—</div></div>
+              </div>
+            </div>
+
+            <p class="hint">Aplasta los ajos · Precio editable arriba</p>
+            <div class="flip-cta">
+              <button class="flip-link" id="toContract">📜 Arrendamiento en especie →</button>
+            </div>
+          </div>
+        </div><!-- /.flip-front -->
+
+        <!-- CARA TRASERA: contrato -->
+        <div class="flip-back">
+          <div class="contract">
+            <div class="contract-hdr">
+              <div>
+                <div class="contract-eyebrow">Régimen de Arrendamiento en Especie</div>
+                <div class="contract-title">Liquidación de Renta en Ajo</div>
+                <div class="contract-law">Art. 17.5 · Ley 29/1994, de 24 de noviembre, de Arrendamientos Urbanos</div>
+              </div>
+              <div class="contract-mod">MOD.&nbsp;AJO&#8209;ESP/2026</div>
+            </div>
+
+            <div class="contract-field">
+              <label class="field-label" for="rentaIn">Renta mensual pactada</label>
+              <div class="input-row">
+                <span class="input-sym">€</span>
+                <input type="number" id="rentaIn" placeholder="0,00" min="0" step="0.01">
+                <span class="input-tag">EUR / MES</span>
+              </div>
+            </div>
+
+            <div>
+              <div class="cr-top">
+                <div class="cr-item">
+                  <div class="r-lbl">Mensualidad en ajo</div>
+                  <div class="r-val big" id="crMes">—</div>
+                </div>
+                <div class="cr-item">
+                  <div class="r-lbl">Cabezas al mes</div>
+                  <div class="r-val purple" id="crCabMes">—</div>
+                </div>
+              </div>
+              <div class="cr-bot">
+                <div class="cr-item">
+                  <div class="r-lbl">Renta anual</div>
+                  <div class="r-val" id="crAnual">—</div>
+                </div>
+                <div class="cr-item">
+                  <div class="r-lbl">Pago trimestral</div>
+                  <div class="r-val" id="crTrimestre">—</div>
+                </div>
+                <div class="cr-item">
+                  <div class="r-lbl">Fianza (2 meses)</div>
+                  <div class="r-val" id="crFianza">—</div>
+                </div>
+              </div>
+            </div>
+
+            <p class="contract-fine">
+              Cálculo efectuado conforme al régimen de arrendamientos en especie contemplado en el artículo 17.5 de la Ley 29/1994, de 24 de noviembre, de Arrendamientos Urbanos. La equivalencia dineraria se determina aplicando el precio de referencia consignado en la presente calculadora en la fecha de cada período de pago. El bien entregado en concepto de renta deberá hallarse en condiciones óptimas de conservación y presentación comercial. El arrendador podrá rechazar la prestación si el ajo presentado no reúne los estándares mínimos de calidad establecidos en el Real Decreto 1200/2007. Se recomienda la entrega en malla de red de 500 g o caja de madera homologada. El impago en especie tendrá las mismas consecuencias jurídicas que el impago en metálico.
+            </p>
+            <div class="contract-back">
+              <button class="flip-link" id="toCalc">← Volver a la calculadora</button>
+            </div>
+          </div>
+        </div><!-- /.flip-back -->
+
+      </div><!-- /.flip-card -->
+    </div><!-- /.flip-scene -->
+  </div><!-- /.ui -->
+
+  <script>
+    // ═══════════════════════════════════════════════
+    //  CANVAS ENGINE
+    // ═══════════════════════════════════════════════
+
+    const DOT_COLOR = 'rgba(192,138,32,.055)';
+    const GLOWS     = ['rgba(139,63,168,', 'rgba(192,138,32,'];
+
+    const canvas = document.getElementById('stage');
+    const ctx    = canvas.getContext('2d');
+    let W = 0, H = 0;
+
+    function resize() { W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+    resize();
+    addEventListener('resize', resize);
+
+    const SIZES = [22, 30, 38, 48, 60, 72];
+
+    class Bulb {
+      constructor(init) { this.reset(init); }
+
+      reset(init) {
+        this.sz = SIZES[Math.floor(Math.random() * SIZES.length)];
+        this.special = !init && Math.random() < 0.007;
+        if (this.special) { this.sz = 60; this.shimmerT = Math.random() * Math.PI * 2; }
+
+        if (init) {
+          this.x = Math.random() * W;
+          this.y = Math.random() * H;
+        } else {
+          const e = Math.floor(Math.random() * 4);
+          if      (e === 0) { this.x = -this.sz * 2;    this.y = Math.random() * H; }
+          else if (e === 1) { this.x = W + this.sz * 2; this.y = Math.random() * H; }
+          else if (e === 2) { this.x = Math.random() * W; this.y = -this.sz * 2; }
+          else              { this.x = Math.random() * W; this.y = H + this.sz * 2; }
+        }
+
+        const spd = .35 + Math.random() * .95;
+        const ang = Math.random() * Math.PI * 2;
+        this.vx   = Math.cos(ang) * spd;
+        this.vy   = Math.sin(ang) * spd;
+        this.rot  = Math.random() * Math.PI * 2;
+        this.rotV = (Math.random() - .5) * .016;
+        this.alpha = .42 + Math.random() * .5;
+        this.glowIdx = Math.floor(Math.random() * 2);
+
+        this.popping = false; this.popT = 0; this.scale = 1;
+        this.celebrating = false; this.celebT = 0;
+      }
+
+      update(dt) {
+        if (this.popping) {
+          this.popT  += dt * .0038;
+          this.scale  = 1 + Math.sin(this.popT * Math.PI * .65) * .9;
+          this.alpha  = Math.max(0, 1 - this.popT / 1.15);
+          if (this.popT >= 1.15) this.reset(false);
+          return;
+        }
+        if (this.special) this.shimmerT += dt * 0.0024;
+        if (this.celebrating) {
+          this.celebT += dt * .0042;
+          this.scale   = 1 + Math.sin(this.celebT * Math.PI) * .32;
+          if (this.celebT >= 1) { this.celebrating = false; this.scale = 1; }
+        }
+        this.x   += this.vx;
+        this.y   += this.vy;
+        this.rot += this.rotV;
+        const m = this.sz * 2.2;
+        if (this.x < -m)     this.x = W + m * .5;
+        if (this.x > W + m)  this.x = -m * .5;
+        if (this.y < -m)     this.y = H + m * .5;
+        if (this.y > H + m)  this.y = -m * .5;
+      }
+
+      draw() {
+        const gc = GLOWS[this.glowIdx];
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rot);
+        ctx.scale(this.scale, this.scale);
+        ctx.globalAlpha = this.alpha;
+
+        if (this.special) {
+          const t = this.shimmerT;
+          // Aura exterior oscura (verde-púrpura)
+          const outer = ctx.createRadialGradient(0, 0, this.sz * .7, 0, 0, this.sz * 2.4);
+          outer.addColorStop(0,   `rgba(80,200,30,${.12 + .07 * Math.sin(t * .7)})`);
+          outer.addColorStop(.5,  `rgba(55,80,160,${.07 + .04 * Math.sin(t * 1.1)})`);
+          outer.addColorStop(1,   'rgba(20,0,40,0)');
+          ctx.beginPath();
+          ctx.arc(0, 0, this.sz * 2.4, 0, Math.PI * 2);
+          ctx.fillStyle = outer;
+          ctx.fill();
+          // Brillo interior enfermizo
+          const inner = ctx.createRadialGradient(0, 0, 0, 0, 0, this.sz * .95);
+          inner.addColorStop(0,   `rgba(130,230,45,${.20 + .11 * Math.sin(t * 1.9)})`);
+          inner.addColorStop(.65, `rgba(70,170,20,${.10 + .07 * Math.sin(t * 1.4)})`);
+          inner.addColorStop(1,   'rgba(30,100,10,0)');
+          ctx.beginPath();
+          ctx.arc(0, 0, this.sz * .95, 0, Math.PI * 2);
+          ctx.fillStyle = inner;
+          ctx.fill();
+          // Esporas flotantes — gradientes suaves, sin bordes nítidos
+          for (let i = 0; i < 5; i++) {
+            const phase = t * 0.6 + i * 1.257;
+            const dist  = this.sz * (.85 + .22 * Math.sin(t * 1.2 + i * 0.9));
+            const wx = Math.cos(phase) * dist;
+            const wy = Math.sin(phase) * dist;
+            const wr = this.sz * (.32 + .13 * Math.sin(t * 1.8 + i));
+            const wa = .06 + .05 * Math.sin(t * 1.5 + i * 1.1);
+            const wg = ctx.createRadialGradient(wx, wy, 0, wx, wy, wr);
+            wg.addColorStop(0, `rgba(110,225,40,${wa})`);
+            wg.addColorStop(1, 'rgba(60,140,15,0)');
+            ctx.beginPath();
+            ctx.arc(wx, wy, wr, 0, Math.PI * 2);
+            ctx.fillStyle = wg;
+            ctx.fill();
+          }
+        } else {
+          const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, this.sz * .8);
+          grad.addColorStop(0, gc + '.2)');
+          grad.addColorStop(1, gc + '0)');
+          ctx.beginPath();
+          ctx.arc(0, 0, this.sz * .8, 0, Math.PI * 2);
+          ctx.fillStyle = grad;
+          ctx.fill();
+        }
+
+        ctx.font = `${this.sz}px serif`;
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🧄', 0, 1);
+        ctx.restore();
+      }
+
+      hit(px, py) { return !this.popping && Math.hypot(px - this.x, py - this.y) < this.sz * .65; }
+
+      pop() {
+        if (this.popping) return;
+        this.popping = true; this.popT = 0;
+        spawnBurst(this.x, this.y, this.sz);
+        if (this.special) spawnGoldenBurst(this.x, this.y, this.sz);
+      }
+    }
+
+    class Particle {
+      constructor(x, y, sz) {
+        this.x = x; this.y = y;
+        const a = Math.random() * Math.PI * 2;
+        const s = 1.5 + Math.random() * 5.5;
+        this.vx = Math.cos(a) * s;
+        this.vy = Math.sin(a) * s - 2;
+        this.r  = 2.5 + Math.random() * (sz / 7);
+        this.life  = 1;
+        this.decay = .017 + Math.random() * .028;
+        const h = Math.random() < .5 ? 38 + Math.random() * 18 : 270 + Math.random() * 28;
+        this.color = `hsl(${h},${62 + Math.random() * 22}%,${52 + Math.random() * 20}%)`;
+      }
+      update(dt) {
+        const f = dt * .058;
+        this.x  += this.vx * f;
+        this.y  += this.vy * f;
+        this.vy += dt * .0048;
+        this.life -= this.decay * f;
+      }
+      draw() {
+        if (this.life <= 0) return;
+        ctx.save();
+        ctx.globalAlpha = this.life;
+        ctx.fillStyle   = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r * this.life, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    const bulbs = Array.from({ length: 22 }, () => new Bulb(true));
+    let parts = [];
+
+    function spawnBurst(x, y, sz) {
+      const n = 9 + Math.floor(sz / 4.5);
+      for (let i = 0; i < n; i++) parts.push(new Particle(x, y, sz));
+    }
+
+    function spawnGoldenBurst(x, y, sz) {
+      const n = 22 + Math.floor(sz / 3);
+      for (let i = 0; i < n; i++) {
+        const p = new Particle(x, y, sz);
+        p.color = `hsl(${38 + Math.random() * 16},${80 + Math.random() * 20}%,${50 + Math.random() * 30}%)`;
+        p.r     *= 1.7;
+        p.vx    *= 1.35; p.vy *= 1.35;
+        p.decay *= 0.6;
+        parts.push(p);
+      }
+    }
+
+    // ─── Score / Quips ──────────────────────────────
+    let score          = 0;
+    let unlockedRecipes = [];
+    const scoreEl = document.getElementById('score');
+    const quipEl  = document.getElementById('quip');
+    const flashEl = document.getElementById('flash');
+
+    const QUIPS = [
+      '¡Olé!','¡Ay, que arde!','¡Qué maravilla!','¡Apesta de lo bueno!',
+      '¡Fuera vampiros!','¡Madre mía!','¡Buen provecho!','¡Tremendo ajo!',
+      '¡Al sofrito!','¡Puro sabor!','¡Salero!','¡Al mortero!',
+      '¡Ajo power!','¡Viva España!','¡Que rico!','¡Dale que dale!'
+    ];
+    const MILESTONES = {
+      5:    '¡5 ajos! ¡Olé!',
+      10:   '¡Diez! ¡Campeón!',
+      25:   '🧄 ¡Maestro ajero!',
+      50:   '👑 ¡Leyenda del ajo!',
+      100:  '¿Dónde los guarda?',
+      250:  '250 cabezas. Impresionante.',
+      500:  'Esto ya es un problema.',
+      1000: 'Consulte con su médico.',
+    };
+
+    let quipTimer;
+    function showQuip(text, x, y) {
+      quipEl.textContent = text;
+      quipEl.style.left  = Math.min(Math.max(x - 44, 8), W - 170) + 'px';
+      quipEl.style.top   = Math.max(y - 6, 36) + 'px';
+      quipEl.classList.add('on');
+      clearTimeout(quipTimer);
+      quipTimer = setTimeout(() => quipEl.classList.remove('on'), 1500);
+    }
+
+    function celebrate(gold = false) {
+      bulbs.forEach(b => { if (!b.popping) { b.celebrating = true; b.celebT = 0; } });
+      flashEl.style.background = gold
+        ? 'radial-gradient(ellipse at center, rgba(192,138,32,.45) 0%, transparent 68%)'
+        : 'radial-gradient(ellipse at center, rgba(139,63,168,.32) 0%, transparent 68%)';
+      flashEl.classList.remove('pop');
+      void flashEl.offsetWidth;
+      flashEl.classList.add('pop');
+    }
+
+    function addScore(cx, cy) {
+      score++;
+      scoreEl.textContent = score;
+      persist();
+      const m = MILESTONES[score];
+      showQuip(m || QUIPS[Math.floor(Math.random() * QUIPS.length)], cx, cy);
+      if (m) { celebrate(); unlockRecipe(score); }
+    }
+
+    // ─── Loop ───────────────────────────────────────
+    let lastT = 0;
+    function frame(t) {
+      if (!lastT) lastT = t;
+      const dt = Math.min(t - lastT, 50);
+      lastT = t;
+
+      ctx.clearRect(0, 0, W, H);
+
+      ctx.fillStyle = DOT_COLOR;
+      for (let x = 40; x < W; x += 52)
+        for (let y = 40; y < H; y += 52) {
+          ctx.beginPath(); ctx.arc(x, y, .9, 0, Math.PI * 2); ctx.fill();
+        }
+
+      const vig = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W, H) * .72);
+      vig.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.addColorStop(1, 'rgba(0,0,0,.38)');
+      ctx.fillStyle = vig;
+      ctx.fillRect(0, 0, W, H);
+
+      bulbs.forEach(b => { b.update(dt); b.draw(); });
+      parts = parts.filter(p => p.life > 0);
+      parts.forEach(p => { p.update(dt); p.draw(); });
+
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    // ─── Interacción ────────────────────────────────
+    canvas.addEventListener('click', e => {
+      if (document.getElementById('mainui').contains(e.target)) return;
+      for (const b of bulbs) {
+        if (b.hit(e.clientX, e.clientY)) {
+          b.pop();
+          if (b.special) { unlockSecretRecipe(e.clientX, e.clientY); }
+          else            { addScore(e.clientX, e.clientY); }
+          break;
+        }
+      }
+    });
+
+    canvas.addEventListener('mousemove', e => {
+      canvas.style.cursor = bulbs.some(b => b.hit(e.clientX, e.clientY)) ? 'pointer' : 'default';
+    });
+
+    // ═══════════════════════════════════════════════
+    //  CALCULADORA
+    // ═══════════════════════════════════════════════
+
+    const priceEl = document.getElementById('priceKg');
+    const eurosEl = document.getElementById('eurosIn');
+    const kilosEl = document.getElementById('kilosIn');
+    const rKgEl   = document.getElementById('rKg');
+    const rEurEl  = document.getElementById('rEur');
+    const rGrEl   = document.getElementById('rGr');
+    const rCabEl  = document.getElementById('rCab');
+    const rDiEl   = document.getElementById('rDi');
+
+    const HEAD_G = 50, CLOVE_G = 5;
+
+    function fmt(n, d) {
+      if (!isFinite(n) || isNaN(n)) return '—';
+      return n.toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d });
+    }
+
+    function clearRes() {
+      rKgEl.textContent = rEurEl.textContent = rGrEl.textContent =
+      rCabEl.textContent = rDiEl.textContent = '—';
+    }
+
+    let lastDir = 'euros';
+
+    function fromEuros() {
+      lastDir = 'euros';
+      const eur = parseFloat(eurosEl.value), price = parseFloat(priceEl.value);
+      if (!isFinite(eur) || eur < 0 || !isFinite(price) || price <= 0) { clearRes(); return; }
+      const kg = eur / price, g = kg * 1000;
+      kilosEl.value      = '';
+      rKgEl.textContent  = fmt(kg, 3) + ' kg';
+      rEurEl.textContent = fmt(eur, 2) + ' €';
+      rGrEl.textContent  = fmt(g, 0) + ' g';
+      rCabEl.textContent = '≈ ' + fmt(g / HEAD_G, 0);
+      rDiEl.textContent  = '≈ ' + fmt(g / CLOVE_G, 0);
+    }
+
+    function fromKilos() {
+      lastDir = 'kilos';
+      const kg = parseFloat(kilosEl.value), price = parseFloat(priceEl.value);
+      if (!isFinite(kg) || kg < 0 || !isFinite(price) || price <= 0) { clearRes(); return; }
+      const eur = kg * price, g = kg * 1000;
+      eurosEl.value      = '';
+      rKgEl.textContent  = fmt(kg, 3) + ' kg';
+      rEurEl.textContent = fmt(eur, 2) + ' €';
+      rGrEl.textContent  = fmt(g, 0) + ' g';
+      rCabEl.textContent = '≈ ' + fmt(g / HEAD_G, 0);
+      rDiEl.textContent  = '≈ ' + fmt(g / CLOVE_G, 0);
+    }
+
+    eurosEl.addEventListener('input', fromEuros);
+    kilosEl.addEventListener('input', fromKilos);
+    priceEl.addEventListener('input', () => {
+      if      (lastDir === 'euros' && eurosEl.value) fromEuros();
+      else if (lastDir === 'kilos' && kilosEl.value) fromKilos();
+      if (document.getElementById('rentaIn').value) calcRenta();
+    });
+
+    // ─── Arrendamiento en especie ──────────────────
+    const rentaEl    = document.getElementById('rentaIn');
+    const crMesEl    = document.getElementById('crMes');
+    const crCabMesEl = document.getElementById('crCabMes');
+    const crAnualEl  = document.getElementById('crAnual');
+    const crTriEl    = document.getElementById('crTrimestre');
+    const crFianzaEl = document.getElementById('crFianza');
+
+    function calcRenta() {
+      const renta = parseFloat(rentaEl.value);
+      const price = parseFloat(priceEl.value);
+      if (!isFinite(renta) || renta <= 0 || !isFinite(price) || price <= 0) {
+        crMesEl.textContent = crCabMesEl.textContent =
+        crAnualEl.textContent = crTriEl.textContent = crFianzaEl.textContent = '—';
+        return;
+      }
+      const kgMes = renta / price;
+      crMesEl.textContent    = fmt(kgMes, 3) + ' kg';
+      crCabMesEl.textContent = '≈ ' + fmt(kgMes * 1000 / HEAD_G, 0) + ' cabezas';
+      crAnualEl.textContent  = fmt(kgMes * 12, 2) + ' kg';
+      crTriEl.textContent    = fmt(kgMes * 3, 2) + ' kg';
+      crFianzaEl.textContent = fmt(kgMes * 2, 2) + ' kg';
+    }
+
+    rentaEl.addEventListener('input', calcRenta);
+
+    // ─── Flip ──────────────────────────────────────
+    const flipCard = document.getElementById('flipCard');
+    document.getElementById('toContract').addEventListener('click', () => flipCard.classList.add('flipped'));
+    document.getElementById('toCalc').addEventListener('click',     () => flipCard.classList.remove('flipped'));
+
+    document.getElementById('swapBtn').addEventListener('click', () => {
+      const ev = eurosEl.value, kv = kilosEl.value;
+      eurosEl.value = kv; kilosEl.value = ev;
+      if      (eurosEl.value) fromEuros();
+      else if (kilosEl.value) fromKilos();
+      else clearRes();
+    });
+
+    // ═══════════════════════════════════════════════
+    //  RECETARIO
+    // ═══════════════════════════════════════════════
+
+    const SAVE_KEY = 'szung-ajos-v1';
+
+    const RECIPE_IMGS = {
+      5:      'img/alioli-casero.jpg',
+      10:     'img/Gambas-al-ajillo.jpg',
+      25:     'img/pollo-al-ajillo.jpg',
+      50:     'img/Sopa-de-ajo-tradicional.jpg',
+      100:    'img/ajoblanco.jpg',
+      250:    'img/bacalao-al-ajoarriero.jpg',
+      500:    'img/conejo-al.ajillo.jpg',
+      1000:   'img/chuletillas-de-cordero-lechal.jpg',
+      secret: 'img/Black-garlic.jpg',
+    };
+
+    const RECIPES = {
+      5:    { subtitulo: 'Alioli del Primer Mes',         nombre: 'Alioli casero',                    tiempo: '10 min',
+              ingredientes: ['1 huevo entero', '2–3 dientes de ajo', '175 ml aceite de oliva virgen extra', '1 cda. vinagre de vino blanco', 'Sal al gusto'],
+              pasos: ['Pela los ajos y colócalos en el vaso de la batidora junto con el huevo, sal y vinagre.', 'Añade un chorrito de aceite en el fondo. Introduce la batidora sin moverla y bate a máxima velocidad.', 'Cuando emulsione, ve añadiendo el aceite restante a hilo fino mientras subes lentamente la batidora.', 'Rectifica de sal. Conserva en nevera y consume en 2–3 días.'] },
+      10:   { subtitulo: 'Gambas del Vencimiento',        nombre: 'Gambas al ajillo',                 tiempo: '15 min',
+              ingredientes: ['800 g de gambas frescas', '6 dientes de ajo', '1 guindilla cayena', '100 ml aceite de oliva virgen extra', 'Sal', 'Perejil fresco picado'],
+              pasos: ['Pela las gambas. Lamina los ajos y corta la guindilla en aros.', 'Calienta el aceite en cazuela de barro. Sofríe el ajo y la guindilla hasta dorar (1–2 min).', 'Sube el fuego, añade las gambas y sazona. Cocina removiendo 2–3 min hasta que estén rosadas.', 'Espolvorea perejil y sirve inmediatamente en la misma cazuela bien caliente.'] },
+      25:   { subtitulo: 'Pollo de la Prórroga',    nombre: 'Pollo al ajillo',                  tiempo: '50 min',
+              ingredientes: ['1 pollo troceado (o 8 muslos)', '1 cabeza entera de ajos', '150 ml vino blanco seco', '100 ml aceite de oliva virgen extra', '1 hoja de laurel', '1 rama de romero fresco', 'Sal y pimienta negra'],
+              pasos: ['Salpimienta el pollo. Dóralo en aceite bien caliente por todos los lados hasta sellarlo. Retira y reserva.', 'En el mismo aceite sofríe los ajos sin pelar (aplastados) con el laurel a fuego medio 3–4 min.', 'Incorpora el pollo, el vino blanco y el romero. Sube el fuego y deja evaporar el alcohol 2 min.', 'Baja el fuego, tapa y cocina 35–40 min hasta que el pollo esté tierno y la salsa reducida.'] },
+      50:   { subtitulo: 'Sopa Castellana del Impago',    nombre: 'Sopa de ajo castellana',           tiempo: '40 min',
+              ingredientes: ['200 g de pan del día anterior', '8 dientes de ajo', '150 g jamón serrano en taquitos', '1 cda. pimentón dulce', '4 huevos', '1,5 l caldo de pollo', '80 ml aceite de oliva virgen extra', 'Sal y perejil'],
+              pasos: ['Lamina los ajos y sofríelos en el aceite hasta dorar. Añade el jamón y rehoga 2 min.', 'Incorpora el pan en rebanadas finas y rehoga. Fuera del fuego añade el pimentón y mezcla rápido para que no se queme.', 'Vierte el caldo caliente, remueve y cuece a fuego suave 20–25 min hasta que el pan se deshaga.', 'Casca un huevo en cada cuenco, vierte la sopa caliente encima y hornea a 180 °C unos 5–8 min hasta que el huevo esté escalfado.'] },
+      100:  { subtitulo: 'Ajoblanco de Emergencia',       nombre: 'Ajoblanco malagueño',         tiempo: '20 min + 4 h reposo',
+              ingredientes: ['150 g almendras crudas peladas (marcona)', '100 g miga de pan blanco del día anterior', '700 ml agua fría', '2 dientes de ajo', '80 ml aceite de oliva virgen extra', '2 cdas. vinagre de jerez', 'Sal', 'Uvas moscatel para servir'],
+              pasos: ['Remoja la miga de pan troceada en 200 ml de agua fría 10 minutos.', 'Tritura en batidora las almendras, los ajos, el pan escurrido, el vinagre y sal hasta obtener una pasta fina.', 'Con la batidora en marcha, añade el aceite a hilo fino y después el agua restante poco a poco.', 'Pasa por colador fino. Rectifica y enfría en nevera mínimo 4 horas. Sirve muy frío con uvas moscatel y un hilo de aceite.'] },
+      250:  { subtitulo: 'Bacalao del Desahucio',         nombre: 'Bacalao al ajoarriero',            tiempo: '60 min + 48 h desalado',
+              ingredientes: ['600 g bacalao desalado en lomos', '1 cebolla grande', '1 pimiento rojo y 1 verde', '4 dientes de ajo', '3 cdas. pulpa de pimiento choricero', '4 cdas. salsa de tomate frita', '1 patata grande', '1 guindilla', 'Aceite de oliva virgen extra'],
+              pasos: ['Desala el bacalao en agua fría 48 h cambiando el agua cada 8 h. Seca, desmiga y elimina espinas.', 'Sofríe el ajo y la guindilla 2 min. Incorpora la cebolla y los pimientos en juliana y pocha 15 min.', 'Añade la patata en rodajas finas, la pulpa de choricero y el tomate. Cocina 10 min.', 'Incorpora el bacalao desmigado y cocina a fuego suave 10–12 min moviendo la cazuela en círculos para ligar la salsa.'] },
+      500:  { subtitulo: 'Conejo de la Conciliación', nombre: 'Conejo al ajillo con romero',    tiempo: '1 h 30 min + 1 h maceración',
+              ingredientes: ['1 conejo troceado (aprox. 1,2 kg)', '1 cabeza de ajos', '150 ml vino blanco seco', '2 ramas romero fresco', '2 ramas tomillo fresco', '1 guindilla cayena', '3 patatas medianas', '100 ml aceite de oliva virgen extra', 'Sal y pimienta negra'],
+              pasos: ['Maja en mortero 6 dientes de ajo con la cayena, romero, tomillo y 2 cdas. de aceite. Frota el conejo y macera en nevera 1 hora.', 'Dora los 6 ajos restantes enteros en aceite, retíralos. En ese aceite dora el conejo por todos lados 8–10 min.', 'Vierte el vino, deja evaporar 2 min. Baja el fuego, tapa y guisa 35–40 min dando la vuelta a mitad.', 'Fríe las patatas en dados por separado y añádelas los últimos 5 min. Sirve con los ajos dorados reservados.'] },
+      secret: { subtitulo: 'El Ajo Primigenio · Logro Oculto', nombre: 'Ajo negro fermentado al vino de Jerez', tiempo: '21 días fermentación + 20 min',
+              ingredientes: ['2 cabezas ajo morado', '200 ml vino de Jerez palo cortado', '2 cdas. miel de romero', '1 rama tomillo limonero', '1 cdita. sal de Maldon', 'Aceite de oliva virgen extra picual', 'Pimienta de Sichuan'],
+              pasos: ['Envuelve las cabezas de ajo sin pelar en papel de aluminio con el tomillo y la sal. Coloca en olla arrocera o fermentadora a 60 °C durante 21 días hasta que estén negros por dentro.', 'Una vez fermentado, el ajo estará blando y con sabor dulce y umami. Pela los dientes con cuidado — son frágiles.', 'Reduce el vino de Jerez a fuego suave hasta la mitad. Añade la miel y disuelve a fuego mínimo.', 'Glasea los dientes de ajo negro en el vino reducido 3–4 min hasta que brillen. Retira del fuego y deja templar.', 'Sirve sobre pan tostado de masa madre con aceite picual y pimienta de Sichuan recién molida. Marida con el mismo Jerez.'] },
+      1000: { subtitulo: 'Cordero del Magistrado',        nombre: 'Cordero lechal al ajillo con patatas', tiempo: '55 min',
+              ingredientes: ['1 kg cordero lechal fileteado', '3 patatas medianas', '8 dientes de ajo', '1 cda. vinagre de vino blanco', 'Aceite de oliva abundante (para fritura)', 'Sal y pimienta negra', 'Perejil fresco abundante'],
+              pasos: ['Fríe las patatas en rodajas de 1 cm en aceite abundante a fuego medio 15 min. Escurre y reserva.', 'Sube el fuego al máximo. Salpimienta el cordero y fríe en tandas 10–12 min hasta que esté dorado y crujiente.', 'Maja los ajos en mortero con el vinagre y sal hasta obtener un majado fino y aromático.', 'Vierte el majado sobre la carne, incorpora las patatas y el perejil abundante. Cocina 3–4 min más y sirve inmediatamente.'] }
+    };
+
+    function loadSave() {
+      try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || { score: 0, unlocked: [] }; }
+      catch { return { score: 0, unlocked: [] }; }
+    }
+
+    function persist() {
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ score, unlocked: unlockedRecipes })); } catch {}
+    }
+
+    function updateRecipeBadge() {
+      const hasSecret = unlockedRecipes.includes('secret');
+      const total = hasSecret ? 9 : 8;
+      const n = unlockedRecipes.length;
+      document.getElementById('rbNum').innerHTML = n + `<span>/${total}</span>`;
+      document.getElementById('rpSub').textContent = n + ' de ' + total + ' recetas desbloqueadas' + (hasSecret ? ' ✦' : '');
+    }
+
+    let toastMilestone = null, toastAutoHide = null;
+
+    function showRecipeToast(milestone) {
+      const r = RECIPES[milestone];
+      toastMilestone = milestone;
+      const rtImg = document.getElementById('rtImg');
+      const imgUrl = RECIPE_IMGS[milestone];
+      if (imgUrl) { rtImg.src = imgUrl; rtImg.alt = r.nombre; rtImg.classList.remove('hidden'); }
+      else { rtImg.src = ''; rtImg.classList.add('hidden'); }
+      document.getElementById('rtEyebrow').textContent = milestone === 'secret' ? '✦ Logro oculto' : 'Receta desbloqueada';
+      document.getElementById('rtName').textContent = r.subtitulo;
+      document.getElementById('rtReal').textContent = r.nombre + ' · ' + r.tiempo;
+      const toast = document.getElementById('recipeToast');
+      toast.classList.add('on');
+      clearTimeout(toastAutoHide);
+      toastAutoHide = setTimeout(() => toast.classList.remove('on'), 6000);
+    }
+
+    function unlockSecretRecipe(cx, cy) {
+      showQuip('✦ ¡El Ajo Primigenio!', cx || W / 2, cy || H / 2);
+      celebrate(true);
+      if (!unlockedRecipes.includes('secret')) {
+        unlockedRecipes.push('secret');
+        persist();
+        updateRecipeBadge();
+        showRecipeToast('secret');
+      }
+    }
+
+    function unlockRecipe(milestone) {
+      if (unlockedRecipes.includes(milestone)) return;
+      unlockedRecipes.push(milestone);
+      persist();
+      updateRecipeBadge();
+      showRecipeToast(milestone);
+    }
+
+    function preloadRecipeImages() {
+      const unlocked = unlockedRecipes;
+      unlocked.forEach(m => {
+        if (!RECIPE_IMGS[m]) return;
+        const img = new Image();
+        img.src = RECIPE_IMGS[m];
+      });
+    }
+
+    function renderPanel() {
+      const ORDER = [5, 10, 25, 50, 100, 250, 500, 1000];
+      const secretHTML = unlockedRecipes.includes('secret') ? (() => {
+        const r = RECIPES['secret'];
+        return `
+          <div class="rp-item rp-item--secret" data-m="secret">
+            <div class="rp-item-hdr">
+              <div class="rp-item-sub">${r.subtitulo}</div>
+              <div class="rp-item-nom">${r.nombre}</div>
+            </div>
+          </div>`;
+      })() : '';
+      const regularHTML = ORDER.map(m => {
+        const r = RECIPES[m];
+        const locked = !unlockedRecipes.includes(m);
+        if (locked) return `
+          <div class="rp-item rp-item--locked">
+            <div class="rp-item-hdr">
+              <div class="rp-item-sub">Bloqueada &middot; ${m} ajos</div>
+              <div class="rp-item-nom">${r.nombre}</div>
+            </div>
+          </div>`;
+        return `
+          <div class="rp-item" data-m="${m}">
+            <div class="rp-item-hdr">
+              <div class="rp-item-sub">${r.subtitulo}</div>
+              <div class="rp-item-nom">${r.nombre}</div>
+            </div>
+          </div>`;
+      }).join('');
+      document.getElementById('rpList').innerHTML = secretHTML + regularHTML;
+    }
+
+    function showDetail(m) {
+      const r = RECIPES[m];
+      const img = RECIPE_IMGS[m];
+      const detail = document.getElementById('rpDetail');
+      document.querySelectorAll('#rpList .rp-item').forEach(el => {
+        el.classList.toggle('selected', el.dataset.m == m);
+      });
+      detail.innerHTML = `
+        <button class="rp-back-btn" id="rpBackBtn">&#8592; Volver</button>
+        <div class="rp-detail-hero">
+          <img class="rp-detail-img" src="${img}" alt="${r.nombre}" loading="eager">
+          <div class="rp-detail-overlay">
+            <div class="rp-detail-eyebrow">${r.subtitulo}</div>
+            <h3 class="rp-detail-name">${r.nombre}</h3>
+            <div class="rp-detail-meta">&#9201; ${r.tiempo}</div>
+          </div>
+        </div>
+        <div class="rp-detail-body">
+          <div class="rp-slabel">Ingredientes</div>
+          <div class="rp-ingr">${r.ingredientes.map(i => `<span class="rp-ingr-tag">${i}</span>`).join('')}</div>
+          <div class="rp-slabel">Preparaci&oacute;n</div>
+          <div class="rp-steps">${r.pasos.map(p => `<div class="rp-step">${p}</div>`).join('')}</div>
+        </div>`;
+      detail.classList.add('visible');
+      detail.scrollTop = 0;
+      document.getElementById('rpBackBtn').addEventListener('click', () => {
+        detail.classList.remove('visible');
+      });
+    }
+
+    function openPanel(scrollToM) {
+      renderPanel();
+      preloadRecipeImages();
+      document.getElementById('recipePanel').classList.add('open');
+      const detail = document.getElementById('rpDetail');
+      detail.classList.remove('visible');
+      detail.innerHTML = `
+        <div class="rp-cover">
+          <div class="rp-cover-kicker">Edición Arrendataria &middot; 2024</div>
+          <span class="rp-cover-garlic">🧄</span>
+          <div class="rp-cover-rule"></div>
+          <h2 class="rp-cover-title">Recetario del<br>Arrendatario</h2>
+          <div class="rp-cover-rule"></div>
+          <div class="rp-cover-edition">szung &middot; España</div>
+          <p class="rp-cover-hint">&#8592; Selecciona una receta</p>
+        </div>`;
+      if (scrollToM) setTimeout(() => showDetail(scrollToM), 100);
+    }
+
+    function closePanel() {
+      document.getElementById('recipePanel').classList.remove('open');
+    }
+
+    document.getElementById('recipeBadge').addEventListener('click', () => openPanel());
+    document.getElementById('rpClose').addEventListener('click', closePanel);
+    document.getElementById('recipePanel').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closePanel();
+    });
+    document.getElementById('rpList').addEventListener('click', e => {
+      const item = e.target.closest('.rp-item');
+      if (!item || item.classList.contains('rp-item--locked')) return;
+      const m = item.dataset.m === 'secret' ? 'secret' : parseInt(item.dataset.m);
+      showDetail(m);
+    });
+    document.getElementById('rtVerBtn').addEventListener('click', () => {
+      document.getElementById('recipeToast').classList.remove('on');
+      openPanel(toastMilestone);
+    });
+    document.getElementById('rtDismissBtn').addEventListener('click', () => {
+      document.getElementById('recipeToast').classList.remove('on');
+    });
+
+    // Restaurar estado guardado
+    (function () {
+      const saved = loadSave();
+      score = saved.score;
+      unlockedRecipes = saved.unlocked || [];
+      scoreEl.textContent = score;
+      updateRecipeBadge();
+    })();
+  </script>
+</body>
+</html>
