@@ -43,7 +43,7 @@
        BASE
     ═══════════════════════════════════════════ */
     *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    html { background: var(--bg); }
+    html { background: var(--bg); overflow-x: hidden; }
 
     body {
       background-color: var(--bg);
@@ -113,7 +113,7 @@
     #flash.pop { animation: flash 1.3s ease-out forwards; }
 
     /* ─── Main UI ─── */
-    .ui { position: relative; z-index: 20; width: 440px; max-width: calc(100vw - 1.25rem); margin: auto 0; }
+    .ui { position: relative; z-index: 20; width: 100%; max-width: 440px; margin: auto 0; }
 
     /* ─── Header ─── */
     .hdr { text-align: center; margin-bottom: 1.35rem; }
@@ -522,6 +522,75 @@
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
+
+    /* ═══════════════════════════════════════════
+       MÓVIL  ≤ 480px
+    ═══════════════════════════════════════════ */
+    @media (max-width: 480px) {
+      /* Más espacio arriba y abajo para no quedar debajo de los badges fijos */
+      body { padding: 6rem 0.625rem 5rem; }
+      .ui  { margin: 0 auto; }
+
+      /* Badges compactos */
+      .score, .recipe-badge {
+        padding: .38rem .75rem;
+        min-width: 0;
+        border-radius: 11px;
+      }
+      .score        { top: .65rem; right: .65rem; }
+      .score-num    { font-size: 1.4rem; }
+      .score-hint   { display: none; }
+      .recipe-badge { bottom: .65rem; left: .65rem; }
+      .rb-num       { font-size: 1.4rem; }
+      .rb-hint      { display: none; }
+
+      /* Footer: oculto (espacio limitado, no aporta en móvil) */
+      .footer { display: none; }
+
+      /* Toast: de abajo hacia arriba, ancho completo */
+      .recipe-toast {
+        bottom: 4.5rem; left: .75rem; right: .75rem;
+        width: auto;
+        transform: translateY(calc(100% + 2rem));
+      }
+      .recipe-toast.on { transform: translateY(0); }
+
+      /* Price strip: evita que ps-meta desborde por el letter-spacing */
+      .ps-meta    { flex: 1; min-width: 0; }
+      .ps-label   { letter-spacing: .07em; white-space: normal; }
+
+      /* Cabecera */
+      .hdr        { margin-bottom: .9rem; }
+      .hdr h1     { font-size: 1.65rem; }
+      .hdr-icon   { font-size: 1.9rem; }
+
+      /* Tarjeta calculadora */
+      .card          { padding: 1.1rem .9rem; border-radius: 16px; }
+      .price-strip   { padding: .55rem .75rem; margin-bottom: 1rem; gap: .6rem; }
+      .res-main-item { padding: .7rem .85rem; }
+      .res-item      { padding: .5rem .5rem; }
+      .r-val.big     { font-size: 1.2rem; }
+
+      /* Contrato */
+      .contract-hdr   { padding: .9rem 1rem .8rem; flex-wrap: wrap; gap: .5rem; }
+      .contract-mod   { width: 100%; text-align: left; }
+      .contract-field { padding: .9rem 1rem 1rem; }
+      .cr-item        { padding: .65rem 1rem; }
+      .cr-bot         { grid-template-columns: 1fr 1fr; }
+      .cr-bot .cr-item:nth-child(3) {
+        grid-column: 1 / -1;
+        border-left: none;
+        border-top: 1px solid var(--border);
+      }
+      .contract-fine  { padding: .7rem 1rem .85rem; }
+      .contract-back  { padding: .65rem 1rem; }
+
+      /* Panel de recetas: hoja inferior a pantalla completa */
+      .rp-overlay { padding: 0; align-items: flex-end; }
+      .rp-inner   { width: 100%; max-height: 90vh; border-radius: 20px 20px 0 0; }
+      .rp-hdr     { padding: 1rem 1.25rem .85rem; border-radius: 20px 20px 0 0; }
+      .rp-detail-img { height: 180px; }
     }
   </style>
 </head>
