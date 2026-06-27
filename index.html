@@ -586,6 +586,17 @@
       .contract-fine  { padding: .7rem 1rem .85rem; }
       .contract-back  { padding: .65rem 1rem; }
 
+      /* Flip card: reemplazar la rotación 3D por crossfade de opacidad.
+         La perspectiva 3D en móvil desplaza el backface horizontalmente
+         cuando hay cualquier offset de layout, cortando el contrato. */
+      .flip-scene   { perspective: none; }
+      .flip-card    { transform: none !important; transition: none; }
+      .flip-front   { opacity: 1; transition: opacity .25s ease; backface-visibility: visible; }
+      .flip-back    { opacity: 0; pointer-events: none; transition: opacity .25s ease;
+                      transform: none !important; backface-visibility: visible; }
+      .flip-card.flipped .flip-front { opacity: 0; pointer-events: none; }
+      .flip-card.flipped .flip-back  { opacity: 1; pointer-events: auto; }
+
       /* Panel de recetas: hoja inferior a pantalla completa */
       .rp-overlay { padding: 0; align-items: flex-end; }
       .rp-inner   { width: 100%; max-height: 90vh; border-radius: 20px 20px 0 0; }
